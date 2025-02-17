@@ -1,0 +1,53 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql:5.7.24  
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: your_password
+      MYSQL_DATABASE: your_database
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  airflow:
+    image: apache/airflow:2.7.3
+    container_name: airflow
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: mysql+pymysql://root:your_password@mysql/your_database
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+mysql+pymysql://root:your_password@mysql/your_database
+    volumes:
+      - ./dags:/opt/airflow/dags
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis
+
+  flask:
+    build: ./dashboard
+    container_name: flask
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+      - redis
+
+  crawler:
+    build: ./crawler
+    container_name: crawler
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
